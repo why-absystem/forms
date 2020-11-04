@@ -1,2 +1,5 @@
 # FORMS
-Form HTML component from PHP
+#### INSTALLATION :fire:
+
+`composer require absystem/wsbpjs`
+
