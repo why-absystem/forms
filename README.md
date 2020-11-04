@@ -1,4 +1,4 @@
-# FORMS
+# PHP FORM
 #### INSTALLATION :fire:
 
 `composer require wahyu/forms`
