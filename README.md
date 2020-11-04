@@ -1,5 +1,5 @@
 # FORMS
 #### INSTALLATION :fire:
 
-`composer require absystem/wsbpjs`
+composer require wahyu/forms
 
