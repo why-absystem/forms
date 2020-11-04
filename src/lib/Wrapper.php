@@ -1,6 +1,6 @@
 <?php
 	
-	use Forms\Forms;
+	use \W\Forms\Forms;
 	
 	class Wrapper extends Forms {
 		public $container;

@@ -1,5 +1,5 @@
 {
-	"name": "why/forms",
+	"name": "wahyu/forms",
 	"description": "component form html from php",
 	"type": "library",
 	"license": "MIT",
@@ -12,7 +12,7 @@
 	"minimum-stability": "dev",
 	"autoload": {
 		"psr-4": {
-			"Forms\\": "src/"
+			"W\\Forms\\": "src/"
 		}
 	}
 }

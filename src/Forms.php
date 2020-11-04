@@ -4,7 +4,7 @@
 	/** @noinspection PhpIncludeInspection */
 	/** @noinspection PhpUnreachableStatementInspection */
 	
-	namespace Forms;
+	namespace W\Forms;
 	
 	# load the default classes
 	require_once 'lib/Dropdown.php';
