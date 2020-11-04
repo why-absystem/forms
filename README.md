@@ -1,5 +1,5 @@
 # FORMS
 #### INSTALLATION :fire:
 
-`composer require wahyu/forms`
+`composer require why/forms`
 
