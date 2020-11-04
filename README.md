@@ -5,7 +5,7 @@
 
 #### REQUIREMENTS :warning: 
 
-:black_small_square: Bootstrap 4.
+:black_small_square: Bootstrap 4.x.x
 
 #### INSTALL BY CLI :globe_with_meridians:
 
