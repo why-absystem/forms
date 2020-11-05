@@ -170,8 +170,8 @@
 			}
 			
 			# create the formr session
-			if (!isset($_SESSION['formr'])) {
-				$_SESSION['formr'] = [];
+			if (!isset($_SESSION['forms'])) {
+				$_SESSION['forms'] = [];
 			}
 			
 			# for checkbox array values
@@ -277,9 +277,9 @@
 						echo $this->_echo_error_message('CSRF requires <code>session_start()</code> at the top of the script.');
 					} else {
 						# check if token in SESSION equals token in POST array
-						if (hash_equals($_SESSION['formr']['token'], $_POST['csrf_token'])) {
+						if (hash_equals($_SESSION['forms']['token'], $_POST['csrf_token'])) {
 							# compare current time to time of token expiration
-							if (time() >= $_SESSION['formr']['token-expires']) {
+							if (time() >= $_SESSION['forms']['token-expires']) {
 								$this->add_to_errors('Session has timed out. Please refresh the page.');
 								
 								return FALSE;
@@ -1511,26 +1511,26 @@
 			$return = NULL;
 			
 			# flash messages
-			if (isset($_SESSION['formr']['flash'])) {
+			if (isset($_SESSION['forms']['flash'])) {
 				
-				if (!empty($_SESSION['formr']['flash']['success'])) {
-					$this->success_message($_SESSION['formr']['flash']['success']);
+				if (!empty($_SESSION['forms']['flash']['success'])) {
+					$this->success_message($_SESSION['forms']['flash']['success']);
 				}
 				
-				if (!empty($_SESSION['formr']['flash']['error'])) {
-					$this->error_message($_SESSION['formr']['flash']['error']);
+				if (!empty($_SESSION['forms']['flash']['error'])) {
+					$this->error_message($_SESSION['forms']['flash']['error']);
 				}
 				
-				if (!empty($_SESSION['formr']['flash']['warning'])) {
-					$this->warning_message($_SESSION['formr']['flash']['warning']);
+				if (!empty($_SESSION['forms']['flash']['warning'])) {
+					$this->warning_message($_SESSION['forms']['flash']['warning']);
 				}
 				
-				if (!empty($_SESSION['formr']['flash']['info'])) {
-					$this->info_message($_SESSION['formr']['flash']['info']);
+				if (!empty($_SESSION['forms']['flash']['info'])) {
+					$this->info_message($_SESSION['forms']['flash']['info']);
 				}
 				
-				$_SESSION['formr']['flash'] = NULL;
-				unset($_SESSION['formr']['flash']);
+				$_SESSION['forms']['flash'] = NULL;
+				unset($_SESSION['forms']['flash']);
 			}
 			
 			# returns a user-defined message
@@ -1585,7 +1585,7 @@
 		
 		public function warning_message ($str, $flash = FALSE) {
 			if ($flash == TRUE) {
-				return $_SESSION['formr']['flash']['warning'] = $str;
+				return $_SESSION['forms']['flash']['warning'] = $str;
 			}
 			
 			$return        = '<div class="' . $this->controls['alert-w'] . '" role="alert">';
@@ -1597,7 +1597,7 @@
 		
 		public function success_message ($str, $flash = FALSE) {
 			if ($flash == TRUE) {
-				return $_SESSION['formr']['flash']['success'] = $str;
+				return $_SESSION['forms']['flash']['success'] = $str;
 			}
 			
 			$return        = '<div class="' . $this->controls['alert-s'] . '" role="alert">';
@@ -1609,7 +1609,7 @@
 		
 		public function error_message ($str, $flash = FALSE) {
 			if ($flash == TRUE) {
-				return $_SESSION['formr']['flash']['error'] = $str;
+				return $_SESSION['forms']['flash']['error'] = $str;
 			}
 			
 			$return        = '<div class="' . $this->controls['alert-e'] . '" role="alert">';
@@ -1621,7 +1621,7 @@
 		
 		public function info_message ($str, $flash = FALSE) {
 			if ($flash == TRUE) {
-				return $_SESSION['formr']['flash']['info'] = $str;
+				return $_SESSION['forms']['flash']['info'] = $str;
 			}
 			
 			$return        = '<div class="' . $this->controls['alert-i'] . '" role="alert">';
@@ -4194,10 +4194,10 @@
 			}
 			
 			# put the token into a session
-			$_SESSION['formr']['token'] = $token;
+			$_SESSION['forms']['token'] = $token;
 			
 			# token expires in given number of seconds (default 1 hour)
-			$_SESSION['formr']['token-expires'] = time() + $timeout;
+			$_SESSION['forms']['token-expires'] = time() + $timeout;
 			
 			return '<input type="hidden" name="csrf_token" value="' . $token . '">';
 		}
@@ -4240,7 +4240,7 @@
 		public function unset_session () {
 			# deletes the formr, and user-defined sessions, handy for testing
 			
-			unset($_SESSION['formr']);
+			unset($_SESSION['forms']);
 			
 			if (isset($_SESSION[$this->session])) {
 				unset($_SESSION[$this->session]);
