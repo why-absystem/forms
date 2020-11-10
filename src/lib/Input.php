@@ -1,6 +1,6 @@
 <?php
 	
-	use \W\Forms\Forms;
+	use \W\Forms;
 	
 	class Input extends Forms {
 		# these methods are used to wrap your form elements.

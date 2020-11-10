@@ -1,6 +1,6 @@
 <?php
 	
-	use \W\Forms\Forms;
+	use \W\Forms;
 	
 	class Dropdown extends Forms {
 		# these methods contain arrays which are to be used in dropdown menus.
