@@ -1,8 +1,6 @@
 <?php
 	
-	use \W\Forms;
-	
-	class Dropdown extends Forms {
+	class Dropdowns extends W\Formr {
 		# these methods contain arrays which are to be used in dropdown menus.
 		# documentation: https://formr.github.io/methods/#drop-downs-use-strings
 		# extend formr and create your own: https://github.com/formr/extend

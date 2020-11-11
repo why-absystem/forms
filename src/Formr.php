@@ -1,19 +1,28 @@
 <?php
-	/** @noinspection PhpUndefinedVariableInspection */
-	/** @noinspection PhpInconsistentReturnPointsInspection */
-	/** @noinspection PhpIncludeInspection */
-	/** @noinspection PhpUnreachableStatementInspection */
 	
 	namespace W;
 	
 	# load the default classes
-	require_once 'lib/Dropdown.php';
-	require_once 'lib/Input.php';
+	require_once 'lib/Dropdowns.php';
+	require_once 'lib/Forms.php';
 	require_once 'lib/Wrapper.php';
 	
+	# load the 'plugin' classes
+	if (file_exists(dirname(__FILE__) . '/my_classes/my.wrappers.php')) {
+		require_once 'my_classes/my.wrappers.php';
+	}
 	
-	class Forms {
-		# each of these public properties acts as a 'preference' for Formr,
+	if (file_exists(dirname(__FILE__) . '/my_classes/my.dropdowns.php')) {
+		require_once 'my_classes/my.dropdowns.php';
+	}
+	
+	if (file_exists(dirname(__FILE__) . '/my_classes/my.forms.php')) {
+		require_once 'my_classes/my.forms.php';
+	}
+	
+	
+	class Formr {
+		# each of these public properties acts as a 'preference' for W,
 		# and can be defined at instantiation. see documentation for more info.
 		
 		# form fields are not required by default
@@ -48,6 +57,10 @@
 		
 		# inline validation is off by default
 		public $inline_errors = FALSE;
+		
+		public $success_message = NULL;
+		public $warning_message = NULL;
+		public $info_message    = NULL;
 		
 		# inline validation CSS class: displays error icon next to form fields
 		public $inline_errors_class = 'error_inline';
@@ -89,7 +102,7 @@
 		# sanitize html $_POST values with FILTER_SANITIZE_SPECIAL_CHARS
 		public $sanitize_html = FALSE;
 		
-		# suppress Formr's validation error messages and only display your own
+		# suppress W's validation error messages and only display your own
 		public $custom_validation_messages = FALSE;
 		
 		# create an empty errors array for form validation
@@ -98,7 +111,7 @@
 		# put default class names into an array
 		public $controls = array();
 		
-		# default wrapper types which Formr supports
+		# default wrapper types which W supports
 		public $default_wrapper_types = array('div', 'p', 'ul', 'ol', 'dl', 'li');
 		
 		# default string delimiters
@@ -111,7 +124,7 @@
 		# we don't want to create form attributes from these keywords if they're in the $data array
 		private $no_keys = array('string', 'checked', 'selected', 'required', 'inline', 'label', 'fastform', 'options', 'group', 'multiple');
 		
-		# use Formr's default wrapper
+		# use W's default wrapper
 		private $use_default_wrapper = TRUE;
 		
 		function __construct ($wrapper = '', $session = NULL) {
@@ -159,7 +172,8 @@
 					}
 				} catch (\ReflectionException $e) {
 					#	method does not exist, spit out error and set default controls
-					die('<div style="color: red; padding: 30px"><h2>Whoops!</h2><h4>' . $e->getMessage() . '.</h4><p>If you are using Custom Wrappers, please make sure the Custom Wrapper file is located at "<code>my_classes/my.wrappers.php</code>", and that you spelled your Wrapper name correctly.</p><p>If you are NOT using Custom Wrappers, please make sure a file does not exist at "<code>my_classes/my.wrappers.php</code>".</p></div>');
+					$this->_echo_error_message('<h4>' . $e->getMessage() . '</h4>If you are using Custom Wrappers, please make sure the Custom Wrapper file is located at "<strong>my_classes/my.wrappers.php</strong>", and that you spelled your Wrapper name correctly.</p><p>If you are NOT using Custom Wrappers, please make sure a file does not exist at <strong>"my_classes/my.wrappers.php"</strong>');
+					die;
 					
 					if (!$this->use_default_wrapper) {
 						$this->controls = \MyWrappers::css_defaults();
@@ -170,8 +184,8 @@
 			}
 			
 			# create the formr session
-			if (!isset($_SESSION['forms'])) {
-				$_SESSION['forms'] = [];
+			if (!isset($_SESSION['formr'])) {
+				$_SESSION['formr'] = [];
 			}
 			
 			# for checkbox array values
@@ -256,7 +270,7 @@
 				}
 			}
 			
-			$return .= '<table>';
+			$return .= '<table class="table table-sm">';
 			foreach ($info as $key => $value) {
 				$return .= '<tr><td><strong>' . $key . '</strong></td><td>' . $value . '</td></tr>';
 			}
@@ -268,6 +282,11 @@
 			echo '<h3>Form Settings</h3><tt>' . $return . '</tt><br><br><br>';
 		}
 		
+		# alias of form_info()
+		public function info () {
+			return $this->form_info();
+		}
+		
 		public function submit () {
 			# checks if submit button was clicked
 			if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -277,9 +296,9 @@
 						echo $this->_echo_error_message('CSRF requires <code>session_start()</code> at the top of the script.');
 					} else {
 						# check if token in SESSION equals token in POST array
-						if (hash_equals($_SESSION['forms']['token'], $_POST['csrf_token'])) {
+						if (hash_equals($_SESSION['formr']['token'], $_POST['csrf_token'])) {
 							# compare current time to time of token expiration
-							if (time() >= $_SESSION['forms']['token-expires']) {
+							if (time() >= $_SESSION['formr']['token-expires']) {
 								$this->add_to_errors('Session has timed out. Please refresh the page.');
 								
 								return FALSE;
@@ -398,16 +417,16 @@
 		public function in_errors_if ($key, $string) {
 			# if the key is in the errors array, return a user-defined string
 			if ($this->in_errors($key)) {
-				return $string;
+				echo $string;
 			}
 		}
 		
 		public function in_errors_else ($key, $error_string, $default_string) {
 			# return a different user-defined string depending on if the field is in the errors array
 			if (!$this->in_errors($key)) {
-				return $default_string;
+				echo $default_string;
 			} else {
-				return $error_string;
+				echo $error_string;
 			}
 		}
 		
@@ -434,9 +453,9 @@
 			
 			# return POSTed field value
 			if (isset($_POST[$name])) {
-				return $this->_clean_value($_POST[$name]);
+				echo $this->_clean_value($_POST[$name]);
 			} elseif ($value) {
-				return $value;
+				echo $value;
 			}
 			
 			return FALSE;
@@ -448,6 +467,7 @@
 			$return = str_replace('-', '_', $str);
 			$return = str_replace(' ', '_', $return);
 			$return = preg_replace('/[^A-Za-z0-9_]/', '', $return);
+			
 			return $return;
 		}
 		
@@ -562,12 +582,13 @@
 				# dynamically build the method's name...
 				# $method = the method's name in the Wrapper class
 				$method = $wrapper_context['type'];
-				return $wrapper->$method($element, $data);
+				
+				echo $wrapper->$method($element, $data);
 				
 			} else {
 				
 				# enclose the element in the default wrapper
-				return $wrapper->default_wrapper($wrapper_context, $element, $data);
+				echo $wrapper->default_wrapper($wrapper_context, $element, $data);
 			}
 		}
 		
@@ -611,7 +632,7 @@
 			# add the button class
 			if (in_array($data['type'], $this->_input_types('button'))) {
 				# don't add the class if it's empty
-				if ($this->controls['button']) {
+				if ($this->controls['button'] && !$data['string']) {
 					$string .= 'class="' . $this->controls['button'] . ' ';
 				}
 			}
@@ -629,7 +650,7 @@
 			// }
 			
 			# check if field is required
-			if ($this->_check_required($data['name'])) {
+			if ($this->_check_required($data['name'], $data)) {
 				
 				# add the errors class
 				if ($this->in_errors($data['name']) && $this->wrapper != 'bootstrap') {
@@ -669,7 +690,7 @@
 			
 			$return = NULL;
 			
-			$excluded_types = array('submit', 'button', 'checkbox', 'radio');
+			$excluded_types = array('submit', 'button', 'reset', 'checkbox', 'radio');
 			
 			if ((strpos($element, 'class=') === FALSE) || (isset($data['string']) && strpos($data['string'], 'class=') === FALSE)) {
 				if (!empty($this->controls['input'])) {
@@ -741,8 +762,8 @@
 			# this function was left somewhat sparse because i didn't want to assume i knew what kind of data you were going to allow,
 			# so i just put in some basic sanitizing functions. if you want more control, just tweak this to your heart's desire! :)
 			
-			# Formr can also use HTMLPurifier
-			# just download the HTMLPurifier class and drop it in at the top of this script. Formr will do the rest.
+			# W can also use HTMLPurifier
+			# just download the HTMLPurifier class and drop it in at the top of this script. W will do the rest.
 			# http://htmlpurifier.org
 			
 			# return an empty value
@@ -781,24 +802,30 @@
 						$str = strip_tags($str);
 					} else {
 						# allow html
-						$str = $this->sanitize_html ? filter_var($str, FILTER_SANITIZE_SPECIAL_CHARS) : $str;
+						if ($this->sanitize_html) {
+							$str = filter_var($str, FILTER_SANITIZE_SPECIAL_CHARS);
+						} else {
+							$str = $str;
+						}
 					}
 					
 					return $str;
 					
 				} else {
 					# clean and return the array
-					/** @noinspection PhpWrongForeachArgumentTypeInspection */
 					foreach ($str as $value) {
 						if ($allow_html == FALSE) {
 							# strip html tags and prevent against xss
 							$value = strip_tags($value);
 						} else {
 							# allow html
-							$value = $this->sanitize_html ? filter_var($value, FILTER_SANITIZE_SPECIAL_CHARS) : $value;
+							if ($this->sanitize_html) {
+								$value = filter_var($value, FILTER_SANITIZE_SPECIAL_CHARS);
+							} else {
+								$value = $value;
+							}
 						}
 					}
-					
 					
 					return $value;
 				}
@@ -1506,36 +1533,62 @@
 		
 		# MESSAGING
 		public function messages ($open_tag = '', $close_tag = '') {
-			# this function prints client-side validation error messages to the browser
+			# this function prints client-side validation messages to the browser
+			
+			if ($this->success_message || $this->warning_message || $this->info_message) {
+				if ($this->success_message) {
+					$alert_control = $this->controls['alert-s'];
+					$message       = $this->success_message;
+				}
+				
+				if ($this->warning_message) {
+					$alert_control = $this->controls['alert-w'];
+					$message       = $this->warning_message;
+				}
+				
+				if ($this->info_message) {
+					$alert_control = $this->controls['alert-i'];
+					$message       = $this->info_message;
+				}
+				
+				$return = '<div class="' . $alert_control . '" role="alert">';
+				if (strstr($this->wrapper, 'bootstrap') !== FALSE) {
+					$return .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
+				}
+				$return .= $message;
+				$return .= '</div>';
+				
+				echo $return;
+			}
 			
 			$return = NULL;
 			
 			# flash messages
-			if (isset($_SESSION['forms']['flash'])) {
+			if (isset($_SESSION['formr']['flash'])) {
 				
-				if (!empty($_SESSION['forms']['flash']['success'])) {
-					$this->success_message($_SESSION['forms']['flash']['success']);
+				if (!empty($_SESSION['formr']['flash']['success'])) {
+					$this->success_message($_SESSION['formr']['flash']['success']);
 				}
 				
-				if (!empty($_SESSION['forms']['flash']['error'])) {
-					$this->error_message($_SESSION['forms']['flash']['error']);
+				if (!empty($_SESSION['formr']['flash']['error'])) {
+					$this->error_message($_SESSION['formr']['flash']['error']);
 				}
 				
-				if (!empty($_SESSION['forms']['flash']['warning'])) {
-					$this->warning_message($_SESSION['forms']['flash']['warning']);
+				if (!empty($_SESSION['formr']['flash']['warning'])) {
+					$this->warning_message($_SESSION['formr']['flash']['warning']);
 				}
 				
-				if (!empty($_SESSION['forms']['flash']['info'])) {
-					$this->info_message($_SESSION['forms']['flash']['info']);
+				if (!empty($_SESSION['formr']['flash']['info'])) {
+					$this->info_message($_SESSION['formr']['flash']['info']);
 				}
 				
-				$_SESSION['forms']['flash'] = NULL;
-				unset($_SESSION['forms']['flash']);
+				$_SESSION['formr']['flash'] = NULL;
+				unset($_SESSION['formr']['flash']);
 			}
 			
 			# returns a user-defined message
 			if (isset($this->message)) {
-				return $this->message;
+				echo $this->message;
 			}
 			
 			# returns form errors
@@ -1578,63 +1631,76 @@
 						}
 					}
 					
-					return $return;
+					echo $return;
 				}
 			}
 		}
 		
-		public function warning_message ($str, $flash = FALSE) {
+		public function warning_message ($message, $flash = FALSE) {
 			if ($flash == TRUE) {
-				return $_SESSION['forms']['flash']['warning'] = $str;
+				return $_SESSION['formr']['flash']['warning'] = $message;
 			}
 			
-			$return        = '<div class="' . $this->controls['alert-w'] . '" role="alert">';
-			$return        .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
-			$return        .= $str;
-			$return        .= '</div>';
-			$this->message = $return;
+			$return = '<div class="' . $this->controls['alert-w'] . '" role="alert">';
+			if (strstr($this->wrapper, 'bootstrap') !== FALSE) {
+				$return .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
+			}
+			$return .= $message;
+			$return .= '</div>';
+			
+			echo $return;
 		}
 		
-		public function success_message ($str, $flash = FALSE) {
+		public function success_message ($message, $flash = FALSE) {
 			if ($flash == TRUE) {
-				return $_SESSION['forms']['flash']['success'] = $str;
+				return $_SESSION['formr']['flash']['success'] = $message;
 			}
 			
-			$return        = '<div class="' . $this->controls['alert-s'] . '" role="alert">';
-			$return        .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
-			$return        .= $str;
-			$return        .= '</div>';
-			$this->message = $return;
+			$return = '<div class="' . $this->controls['alert-s'] . '" role="alert">';
+			if (strstr($this->wrapper, 'bootstrap') !== FALSE) {
+				$return .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
+			}
+			$return .= $message;
+			$return .= '</div>';
+			
+			echo $return;
 		}
 		
-		public function error_message ($str, $flash = FALSE) {
+		public function error_message ($message, $flash = FALSE) {
 			if ($flash == TRUE) {
-				return $_SESSION['forms']['flash']['error'] = $str;
+				return $_SESSION['formr']['flash']['error'] = $message;
 			}
 			
-			$return        = '<div class="' . $this->controls['alert-e'] . '" role="alert">';
-			$return        .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
-			$return        .= $str;
-			$return        .= '</div>';
-			$this->message = $return;
+			$return = '<div class="' . $this->controls['alert-e'] . '" role="alert">';
+			if (strstr($this->wrapper, 'bootstrap') !== FALSE) {
+				$return .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
+			}
+			$return .= $message;
+			$return .= '</div>';
+			
+			echo $return;
 		}
 		
-		public function info_message ($str, $flash = FALSE) {
+		public function info_message ($message, $flash = FALSE) {
 			if ($flash == TRUE) {
-				return $_SESSION['forms']['flash']['info'] = $str;
+				return $_SESSION['formr']['flash']['info'] = $message;
 			}
 			
-			$return        = '<div class="' . $this->controls['alert-i'] . '" role="alert">';
-			$return        .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
-			$return        .= $str;
-			$return        .= '</div>';
-			$this->message = $return;
+			$return = '<div class="' . $this->controls['alert-i'] . '" role="alert">';
+			if (strstr($this->wrapper, 'bootstrap') !== FALSE) {
+				$return .= '    <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
+			}
+			$return .= $message;
+			$return .= '</div>';
+			
+			echo $return;
 		}
 		
 		private function _echo_success_message ($str) {
 			$return = '<div style="margin: 20px 20px 40px 20px; padding:15px; background: #53A451; color: white; border-radius: 5px; text-align: center">';
 			$return .= $str;
 			$return .= '</div>';
+			
 			echo $return;
 		}
 		
@@ -1642,6 +1708,7 @@
 			$return = '<div style="margin: 20px 20px 40px 20px; padding:15px; background: #CB444A; color: white; border-radius: 5px; text-align: center">';
 			$return .= $str;
 			$return .= '</div>';
+			
 			echo $return;
 		}
 		
@@ -1657,8 +1724,8 @@
 		
 		public function fastpost ($name) {
 			# for the truly lazy! ;)
-			
 			# returns an associative array of all posted keys/values, minus the submit button (if it's named 'submit')
+			
 			if ($name === 'POST') {
 				$keys = '';
 				foreach ($_POST as $key => $value) {
@@ -1669,15 +1736,20 @@
 					}
 				}
 				return $keys;
+				
 			} else {
 				
 				# this part works with the Forms class to allow for quick validation by using pre-built form/validation sets
 				
-				# create the array by passing the function name and the validate flag to the Forms class
-				if (!$this->use_default_wrapper) {
-					$data = MyForms::$name('validate');
+				if (is_array($name)) {
+					$data = $name;
 				} else {
-					$data = Forms::$name('validate');
+					# create the array by passing the function name and the validate flag to the Forms class
+					if (!$this->use_default_wrapper) {
+						$data = \MyForms::$name('validate');
+					} else {
+						$data = \Forms::$name('validate');
+					}
 				}
 				
 				# run it through the validate function
@@ -1694,7 +1766,6 @@
 						$keys[$key] = $this->post($key, $value[0]);
 					}
 				}
-				
 				return $keys;
 			}
 		}
@@ -2206,7 +2277,6 @@
 				}
 			}
 			
-			
 			# the form's method
 			if (empty($data['method'])) {
 				$data['method'] = 'post';
@@ -2223,12 +2293,16 @@
 			}
 			
 			# add an ID
-			if (empty($data['id']) && !empty($data['name'])) {
-				$return .= ' id="' . $data['name'] . '"';
-			} elseif (!empty($data['id'])) {
-				$return .= ' id="' . $data['id'] . '"';
-			} elseif (isset($this->id)) {
+			if (isset($this->id)) {
 				$return .= ' id="' . $this->id . '"';
+			} else {
+				if (empty($data['id']) && !empty($data['name'])) {
+					$return .= ' id="' . $data['name'] . '"';
+				} elseif (!empty($data['id'])) {
+					$return .= ' id="' . $data['id'] . '"';
+				} else {
+					$return .= ' id="' . $data['name'] . '"';
+				}
 			}
 			
 			# add the method and character set
@@ -2255,6 +2329,10 @@
 				$return .= $this->_nl(1);
 			}
 			
+			if ($this->wrapper == 'ul' || $this->wrapper == 'ol' || $this->wrapper == 'dl') {
+				$return .= '<' . $this->wrapper . '>';
+			}
+			
 			return $return . $this->_nl(1);
 		}
 		
@@ -2276,7 +2354,7 @@
 				'hidden'    => $hidden
 			);
 			
-			return $this->_form($data);
+			echo $this->_form($data);
 		}
 		
 		public function form_open_multipart ($name = '', $id = '', $action = '', $method = '', $string = '', $hidden = '') {
@@ -2290,7 +2368,7 @@
 				'hidden'    => $hidden
 			);
 			
-			return $this->_form($data);
+			echo $this->_form($data);
 		}
 		
 		public function form_close () {
@@ -2304,9 +2382,31 @@
 				}
 			}
 			
+			if ($this->wrapper == 'ul' || $this->wrapper == 'ol' || $this->wrapper == 'dl') {
+				$return .= '</' . $this->wrapper . '>';
+			}
+			
 			$return .= $this->_nl(1) . '</form>' . $this->_nl(1);
 			
-			return $return;
+			echo $return;
+		}
+		
+		public function open ($name = '', $id = '', $action = '', $method = '', $string = '', $hidden = '') {
+			# alias of form_open()
+			
+			return $this->form_open($name, $id, $action, $method, $string, $hidden);
+		}
+		
+		public function open_multipart ($name = '', $id = '', $action = '', $method = '', $string = '', $hidden = '') {
+			# alias of form_open_multipart()
+			
+			return $this->form_open_multipart($name, $id, $action, $method, $string, $hidden);
+		}
+		
+		public function close () {
+			# alias of form_close()
+			
+			return $this->form_close();
 		}
 		
 		
@@ -2332,11 +2432,11 @@
 				$data['value'] = 'Submit';
 			}
 			
-			# 'fix' the classes attribute
-			$return .= $this->_fix_classes($return, $data);
-			
 			# add user-entered string and additional attributes
 			$return .= $this->_attributes($data);
+			
+			# 'fix' the classes attribute
+			$return .= $this->_fix_classes($return, $data);
 			
 			# insert the value and close the <button>
 			$return .= '>' . $data['value'] . '</button>';
@@ -2378,7 +2478,7 @@
 				$data['type'] = 'submit';
 			}
 			
-			return $this->_create_input($data);
+			echo $this->_create_input($data);
 		}
 		
 		public function input_reset ($data = '', $label = '', $value = '', $id = '', $string = '') {
@@ -2394,7 +2494,8 @@
 			} else {
 				$data['type'] = 'reset';
 			}
-			return $this->_create_input($data);
+			
+			echo $this->_create_input($data);
 		}
 		
 		public function input_button ($data = '', $label = '', $value = '', $id = '', $string = '') {
@@ -2411,7 +2512,7 @@
 				$data['type'] = 'button';
 			}
 			
-			return $this->_button($data);
+			echo $this->_button($data);
 		}
 		
 		public function input_button_submit ($data = '', $label = '', $value = '', $id = '', $string = '') {
@@ -2428,7 +2529,7 @@
 				$data['type'] = 'submit';
 			}
 			
-			return $this->_button($data);
+			echo $this->_button($data);
 		}
 		
 		public function submit_button ($value = 'Submit') {
@@ -2438,17 +2539,31 @@
 				'label'  => NULL,
 				'value'  => $value,
 				'id'     => 'submit',
-				'string' => NULL
+				'string' => 'class="button"'
 			);
 			
-			return $this->_button($data);
+			if (strpos($this->wrapper, 'bootstrap') !== FALSE) {
+				$data['string'] = 'class="btn btn-primary"';
+			}
+			
+			echo $this->_button($data);
 		}
 		
-		public function inline ($name) {
-			# add div if using inline errors
-			if ($this->in_errors($name) && $this->inline_errors) {
-				return '<div class="' . $this->inline_errors_class . '"></div>';
+		public function reset_button ($value = 'Reset') {
+			$data = array(
+				'type'   => 'reset',
+				'name'   => 'reset',
+				'label'  => NULL,
+				'value'  => $value,
+				'id'     => 'reset',
+				'string' => 'class="button"'
+			);
+			
+			if (strpos($this->wrapper, 'bootstrap') !== FALSE) {
+				$data['string'] = 'class="btn btn-secondary"';
 			}
+			
+			echo $this->_button($data);
 		}
 		
 		
@@ -2620,9 +2735,6 @@
 				}
 			}
 			
-			# 'fix' the classes attribute
-			$return .= $this->_fix_classes($return, $data);
-			
 			# last resort: an ID wasn't provided; use the name field as the ID
 			# do not auto-generate an ID if the field is an array
 			if (!$this->is_not_empty($data['id'])) {
@@ -2638,6 +2750,9 @@
 			# add user-entered string and additional attributes
 			$return .= $this->_attributes($data);
 			
+			# 'fix' the classes attribute
+			$return .= $this->_fix_classes($return, $data);
+			
 			# if required
 			if ($this->_check_required($data['name']) && $data['type'] != 'submit' && $data['type'] != 'reset') {
 				$return .= ' required';
@@ -2647,7 +2762,7 @@
 			$return .= '>';
 			
 			# if using inline validation
-			$return .= $this->inline($data['name']);
+			$return .= $this->_inline($data['name']);
 			
 			$return = str_replace('  ', ' ', $return);
 			
@@ -3085,7 +3200,7 @@
 			# create inputs directly from arrays
 			
 			if (!array_key_exists('type', $data)) {
-				return $this->_exception('You must assign a field type to the <code>' . $data['name'] . '</code> array');
+				return $this->_echo_error_message('You must assign a field type to the <code>' . $data['name'] . '</code> array');
 			}
 			
 			if ($data['type'] == 'select') {
@@ -3156,14 +3271,14 @@
 				}
 			}
 			
-			# 'fix' the classes attribute
-			$return .= $this->_fix_classes($return, $data);
-			
 			# add user-entered string and additional attributes
 			$return .= ' ' . $this->_attributes($data);
 			
+			# 'fix' the classes attribute
+			$return .= $this->_fix_classes($return, $data);
+			
 			# if required
-			if ($this->_check_required($data['name'])) {
+			if ($this->_check_required($data['name'], $data)) {
 				$return .= ' required';
 			}
 			
@@ -3184,7 +3299,7 @@
 			$return .= '</textarea>';
 			
 			# if using inline validation
-			$return .= $this->inline($data['name']);
+			$return .= $this->_inline($data['name']);
 			
 			$return = str_replace('  ', ' ', $return);
 			
@@ -3240,16 +3355,14 @@
 			# add ID
 			$return .= ' id="' . $data['id'] . '"';
 			
+			# add user-entered string and additional attributes
+			$return .= ' ' . $this->_attributes($data);
 			
 			# 'fix' the classes attribute
 			$return .= $this->_fix_classes($return, $data);
 			
-			
-			# add user-entered string and additional attributes
-			$return .= ' ' . $this->_attributes($data);
-			
 			# if required
-			if ($this->_check_required($data['name'])) {
+			if ($this->_check_required($data['name'], $data)) {
 				$return .= ' required';
 			}
 			
@@ -3280,7 +3393,6 @@
 				if (is_array($value)) {
 					$return .= $this->_t(1) . '<optgroup label="' . $key . '">';
 					# loop through the array
-					/** @noinspection PhpForeachArrayIsUsedAsValueInspection */
 					foreach ($value as $value => $label) {
 						# if the form has been posted, print selected option
 						if (isset($_POST[$data['name']]) && $_POST[$data['name']] == $value) {
@@ -3328,7 +3440,7 @@
 			$return .= $this->_t(1) . '</select>';
 			
 			# if using inline validation
-			$return .= $this->inline($data['name']);
+			$return .= $this->_inline($data['name']);
 			
 			$return = str_replace('  ', ' ', $return);
 			
@@ -3350,7 +3462,7 @@
 							$element .= $this->_nl(1) . '<!-- ' . $data['name'] . ' -->' . $this->_nl(1);
 						}
 						$element .= $return . $this->_nl(1);
-						return $element;
+						return $this->_wrapper($element, $data);
 					}
 				} else {
 					# wrap the element
@@ -3381,10 +3493,10 @@
 				return \MyDropdowns::$menu();
 			} else {
 				if ($data) {
-					return \Dropdown::$menu($data);
+					return \Dropdowns::$menu($data);
 				}
 				
-				return \Dropdown::$menu();
+				return \Dropdowns::$menu();
 			}
 		}
 		
@@ -3569,7 +3681,7 @@
 				$return .= '<legend>' . $legend . '</legend>';
 			}
 			
-			return $return . $this->_nl(1);
+			echo $return . $this->_nl(1);
 		}
 		
 		public function fieldset_close ($string = '') {
@@ -3579,7 +3691,7 @@
 				$return .= $string;
 			}
 			
-			return $return . $this->_nl(1);
+			echo $return . $this->_nl(1);
 		}
 		
 		
@@ -3708,7 +3820,10 @@
 			$return = NULL;
 			
 			if ($form) {
-				if ($form == 'multipart') {
+				if (!$this->id) {
+					$this->id = 'myForm';
+				}
+				if ($form === 'multipart') {
 					$return .= $this->form_open_multipart();
 				} else {
 					$return .= $this->form_open();
@@ -3800,10 +3915,14 @@
 			
 			# create the array by passing the function name to the Forms class
 			
+			if (!$this->id) {
+				$this->id = $form_name;
+			}
+			
 			if (file_exists(dirname(__FILE__) . '/my_classes/my.forms.php')) {
 				$data = \MyForms::$form_name();
 			} else {
-				$data = \Input::$form_name();
+				$data = \Forms::$form_name();
 			}
 			
 			# pass the array to the fastform() method
@@ -3968,7 +4087,7 @@
 			}
 			
 			# see if a submit button was entered while building the form
-			if (isset($submit)) {
+			if ($data['type'] == 'submit') {
 				$return .= $submit;
 			} else {
 				# create a default submit with no options
@@ -3981,8 +4100,10 @@
 				$data['inline']   = '';
 				$data['selected'] = '';
 				$data['options']  = '';
-				$item             = $this->input_submit($data);
-				$return           .= $this->_wrapper($item, $data);
+				
+				$item = $this->input_submit($data);
+				
+				$return .= $this->_wrapper($item, $data);
 			}
 			
 			# close the list tag
@@ -4012,14 +4133,44 @@
 		
 		
 		# MISC
-		public function heading ($name, $string) {
+		private function _inline ($name) {
+			# add div if using inline errors
+			if ($this->in_errors($name) && $this->inline_errors) {
+				return '<div class="' . $this->inline_errors_class . '"></div>';
+			}
+		}
+		
+		private function _starts_with ($key, $str) {
+			# check if a string starts with the given word
+			
+			return mb_substr($key, 0, strlen($str)) == $str;
+		}
+		
+		private function _strip_brackets ($str) {
+			
+			# strip brackets from a string
+			
+			return trim($str, '[]');
+		}
+		
+		private function _suppress_validation_errors ($data) {
+			# suppress W's default validation error messages and only show user-defined messages
+			
+			if (array_key_exists('string', $data) && $this->custom_validation_messages) {
+				return TRUE;
+			}
+			
+			return FALSE;
+		}
+		
+		public function heading ($key, $string) {
 			# put your string in here and it'll be highlighted when the field receives an error
 			# useful in questionnaires and the like.
 			
-			if (array_key_exists($name, $this->errors)) {
-				return '<h2><span class="error">' . $string . '</span></h2>';
+			if (array_key_exists($key, $this->errors)) {
+				echo '<h2><span class="error">' . $string . '</span></h2>';
 			} else {
-				return '<h2>' . $string . '</h2>';
+				echo '<h2>' . $string . '</h2>';
 			}
 		}
 		
@@ -4028,7 +4179,8 @@
 			# something I was playing around with and forgot about...
 			# TODO? may add to / improve this in the future
 			
-			$headers = $msg = NULL;
+			$headers = NULL;
+			$msg     = NULL;
 			
 			if ($from) {
 				$from = "From: " . $this->_clean_value($from) . "\r\n";
@@ -4107,8 +4259,14 @@
 			
 			# send the email
 			if (!$this->errors()) {
-				if (mail($to, $subject, $msg, $headers)) {
-					return TRUE;
+				if ($html) {
+					if (mail($to, $subject, $msg, $headers)) {
+						return TRUE;
+					}
+				} else {
+					if (mail($to, $subject, $msg)) {
+						return TRUE;
+					}
 				}
 			}
 			
@@ -4194,12 +4352,12 @@
 			}
 			
 			# put the token into a session
-			$_SESSION['forms']['token'] = $token;
+			$_SESSION['formr']['token'] = $token;
 			
 			# token expires in given number of seconds (default 1 hour)
-			$_SESSION['forms']['token-expires'] = time() + $timeout;
+			$_SESSION['formr']['token-expires'] = time() + $timeout;
 			
-			return '<input type="hidden" name="csrf_token" value="' . $token . '">';
+			echo '<input type="hidden" name="csrf_token" value="' . $token . '">';
 		}
 		
 		public function redirect ($url) {
@@ -4208,39 +4366,10 @@
 			header('Location: ' . $url);
 		}
 		
-		private function _starts_with ($key, $str) {
-			# check if a string starts with the given word
-			
-			return mb_substr($key, 0, strlen($str)) == $str;
-		}
-		
-		private function _strip_brackets ($str) {
-			
-			# strip brackets from a string
-			
-			return trim($str, '[]');
-		}
-		
-		private function _suppress_validation_errors ($data) {
-			# suppress Formr's default validation error messages and only show user-defined messages
-			
-			if (array_key_exists('string', $data) && $this->custom_validation_messages) {
-				return TRUE;
-			}
-			
-			return FALSE;
-		}
-		
-		private function _exception ($string) {
-			# working on a better error messaging system; this may change...
-			
-			return '<span style="color:red">!! ' . $string . '</span><br>';
-		}
-		
 		public function unset_session () {
 			# deletes the formr, and user-defined sessions, handy for testing
 			
-			unset($_SESSION['forms']);
+			unset($_SESSION['formr']);
 			
 			if (isset($_SESSION[$this->session])) {
 				unset($_SESSION[$this->session]);
